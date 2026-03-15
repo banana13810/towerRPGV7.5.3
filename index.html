@@ -102,7 +102,7 @@ function attack(){
   if(enemyHP<=0) return;
   let damage = attackPower;
   if(Math.random()<0.15){damage *= 2; log("⚡クリティカル!");}
-  enemyHP -= damage; if(enemyHP<0) enemyHP=0;
+  enemyHP -= damage; if(enemyHP<0)enemyHP=0;
   log("⚔ "+damage+" ダメージ!");
   playerMP += 5; if(playerMP>playerMaxMP) playerMP=playerMaxMP;
   log("💧 5 MP回復!");
@@ -245,27 +245,42 @@ function loadGame(){
   inventory=d.inventory||[]; equipment=d.equipment||{weapon:null,armor:null,ring:null};
 }
 
-// オート戦闘
+// ★賢いオート戦闘
 function autoBattle(){
   if(nextFloorPending){
-    nextFloorPending=false; nextFloor();
+    nextFloorPending=false;
+    nextFloor();
     return;
   }
   if(!autoBattleOn || enemyHP<=0) return;
 
-  // 優先スキルが使える場合
+  // HPが50%以下ならヒール優先
+  if(playerHP <= playerMax*0.5 && playerMP >= skills[3].cost){
+    skills[3].action();
+    return;
+  }
+
+  // バリア使用（防御低めのとき）
+  if(playerMP >= skills[4].cost && defense <= 2){
+    skills[4].action();
+    return;
+  }
+
+  // 優先スキル使用
   if(playerMP >= skills[prioritySkillIndex].cost){
     skills[prioritySkillIndex].action();
     return;
   }
 
-  // MPが足りる他のスキルからランダム
-  let usable = skills.filter(s => playerMP >= s.cost);
-  if(usable.length>0){
-    usable[Math.floor(Math.random()*usable.length)].action();
-  } else {
-    attack();
+  // 他の攻撃スキル
+  let attackSkills = skills.filter((s,i)=>i!==3 && i!==4 && playerMP>=s.cost);
+  if(attackSkills.length>0){
+    attackSkills[Math.floor(Math.random()*attackSkills.length)].action();
+    return;
   }
+
+  // MP不足なら通常攻撃
+  attack();
 }
 
 // 優先スキル選択
