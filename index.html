@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>塔RPG Ver7.5.3</title>
+<title>塔RPG Ver7.5.4</title>
 <style>
 body{font-family:sans-serif;text-align:center;background:#111;color:white;margin:0;padding:0;}
 .game{max-width:480px;margin:auto;padding:10px;}
@@ -18,7 +18,7 @@ button{margin:3px;padding:10px;font-size:16px;border-radius:6px;}
 </head>
 <body>
 <div class="game">
-<h1>🏯塔RPG Ver7.5.3</h1>
+<h1>🏯塔RPG Ver7.5.4</h1>
 
 <h3 id="enemy"></h3>
 <div class="bar"><div id="enemybar" class="enemyBar"></div></div>
@@ -84,13 +84,20 @@ function spawnEnemy(){
   document.getElementById("enemy").innerText=enemy;
 }
 
-// 攻撃
+// 攻撃（通常攻撃でMP回復）
 function attack(){
   if(enemyHP<=0)return;
   let damage=attackPower;
   if(Math.random()<0.15){damage*=2;alert("⚡クリティカル!");}
   enemyHP-=damage;
   log("⚔ "+damage+" ダメージ!");
+
+  // MP回復（攻撃力の10％）
+  let mpRecover=Math.floor(attackPower*0.1);
+  playerMP+=mpRecover;
+  if(playerMP>playerMaxMP) playerMP=playerMaxMP;
+  log("💧 "+mpRecover+" MP回復!");
+
   if(enemyHP<=0){
     enemyHP=0;
     gold+=10+floor;
