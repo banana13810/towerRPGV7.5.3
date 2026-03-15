@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>塔RPG Ver7.5.5</title>
+<title>塔RPG Ver7.5.8 オート切替版</title>
 <style>
 body{font-family:sans-serif;text-align:center;background:#111;color:white;margin:0;padding:0;}
 .game{max-width:480px;margin:auto;padding:10px;}
@@ -18,7 +18,7 @@ button{margin:3px;padding:10px;font-size:16px;border-radius:6px;}
 </head>
 <body>
 <div class="game">
-<h1>🏯塔RPG Ver7.5.5</h1>
+<h1>🏯塔RPG Ver7.5.8 オート切替版</h1>
 
 <h3 id="enemy"></h3>
 <div class="bar"><div id="enemybar" class="enemyBar"></div></div>
@@ -37,6 +37,7 @@ button{margin:3px;padding:10px;font-size:16px;border-radius:6px;}
 <div>💰 <span id="gold"></span></div>
 
 <button id="attackBtn">⚔攻撃</button>
+<button id="autoBtn">🟢オート戦闘ON</button>
 <div id="skillButtons"></div>
 
 <hr>
@@ -60,12 +61,14 @@ button{margin:3px;padding:10px;font-size:16px;border-radius:6px;}
 let floor=1, level=1, exp=0, expMax=10;
 let playerMax=100, playerHP=100, attackPower=5, defense=2, gold=0;
 let playerMaxMP=50, playerMP=50;
-
 let enemyHP=20, enemyMax=20, enemy="スライム";
 let inventory=[], equipment={weapon:null,armor:null,ring:null};
 let rarityList=["common","rare","epic","legend","mythic"], rarityOrder={common:1,rare:2,epic:3,legend:4,mythic:5};
 let logBox=document.getElementById("log");
 let logHistory=[];
+
+// オート戦闘フラグ
+let autoBattleOn = true;
 
 // ログ（最新5件）
 function log(text){
@@ -84,22 +87,22 @@ function spawnEnemy(){
   document.getElementById("enemy").innerText=enemy;
 }
 
-// 攻撃（固定5MP回復）
+// 攻撃（MP固定5回復）
 function attack(){
   if(enemyHP<=0) return;
 
   let damage = attackPower;
-  if(Math.random()<0.15){damage*=2; alert("⚡クリティカル!");}
+  if(Math.random()<0.15){damage *= 2; log("⚡クリティカル!");}
   enemyHP -= damage;
+  if(enemyHP<0) enemyHP=0;
   log("⚔ "+damage+" ダメージ!");
 
   // MP固定5回復
   playerMP += 5;
-  if(playerMP > playerMaxMP) playerMP = playerMaxMP;
+  if(playerMP>playerMaxMP) playerMP=playerMaxMP;
   log("💧 5 MP回復!");
 
-  if(enemyHP <= 0){
-    enemyHP = 0;
+  if(enemyHP==0){
     gold += 10 + floor;
     exp += 5;
     dropItem();
@@ -170,7 +173,7 @@ function updateStats(){attackPower=5;defense=2;if(equipment.weapon)attackPower+=
 function upgradeItem(i){let item=inventory[i];if(item.level>=item.maxLevel){alert("これ以上強化できない");return;}let cost=item.level*50;if(gold<cost)return;gold-=cost;item.level++;item.attack+=2;item.def+=1;drawInventory();update();}
 
 // 合成
-function fuseItem(i){let item=inventory[i];for(let j=0;j<inventory.length;j++){if(i!=j && inventory[j].name==item.name){item.maxLevel+=5;inventory.splice(j,1);alert("合成成功!");drawInventory();return;}}alert("同じ装備が必要");}
+function fuseItem(i){let item=inventory[i];for(let j=0;j<inventory.length;j++){if(i!=j && inventory[j].name==item.name){item.maxLevel+=5;inventory.splice(j,1);log("合成成功!");drawInventory();return;}}log("同じ装備が必要");}
 
 // レア合成
 function rarityFuse(i){
@@ -183,10 +186,10 @@ function rarityFuse(i){
   for(let k=2;k>=0;k--) inventory.splice(same[k],1);
   let newItem={name:item.name,type:item.type,attack:totalAttack+5,def:totalDef+3,level:1,maxLevel:maxLevel+5,rarity:rarityList[rIndex+1]};
   inventory.push(newItem);
-  alert("✨レア度アップ! 自動装備されました!");
   equipment[newItem.type]=newItem;
   drawInventory();
   updateStats();
+  log("✨レア度アップ! 自動装備されました!");
 }
 
 // 売却
@@ -194,7 +197,7 @@ function sellItem(i){let item=inventory[i];gold+=item.attack*5;inventory.splice(
 
 // ショップ
 function buyPotion(){if(gold<20)return;gold-=20;playerHP+=30;if(playerHP>playerMax)playerHP=playerMax;}
-function gacha(){if(gold<100)return;gold-=100;dropItem();alert("ガチャ!");}
+function gacha(){if(gold<100)return;gold-=100;dropItem();log("ガチャ!");}
 
 // ソート
 function sortAttack(){inventory.sort((a,b)=>b.attack-a.attack);drawInventory();}
@@ -205,47 +208,11 @@ function nextFloor(){floor++;spawnEnemy();update();}
 
 // スキル定義
 let skills=[
-  {name:"🔥ファイア", cost:20, action:function(){
-    if(playerMP<20){alert("MPが足りない"); return;}
-    playerMP-=20;
-    let dmg=attackPower*3;
-    enemyHP-=dmg;
-    log("🔥 ファイアで "+dmg+" ダメージ!");
-    if(enemyHP<=0){enemyHP=0; gold+=10+floor; exp+=5; dropItem(); setTimeout(nextFloor,500);}
-    update();
-  }},
-  {name:"💧アイス", cost:15, action:function(){
-    if(playerMP<15){alert("MPが足りない"); return;}
-    playerMP-=15;
-    let dmg=attackPower*1.5;
-    enemyHP-=dmg;
-    log("💧 アイスで "+Math.floor(dmg)+" ダメージ!");
-    update();
-  }},
-  {name:"⚡サンダー", cost:25, action:function(){
-    if(playerMP<25){alert("MPが足りない"); return;}
-    playerMP-=25;
-    let dmg=attackPower*2;
-    enemyHP-=dmg;
-    log("⚡ サンダーで "+Math.floor(dmg)+" ダメージ!");
-    update();
-  }},
-  {name:"💖ヒール", cost:15, action:function(){
-    if(playerMP<15){alert("MPが足りない"); return;}
-    playerMP-=15;
-    let heal=30;
-    playerHP+=heal;if(playerHP>playerMax)playerHP=playerMax;
-    log("💖 ヒールで "+heal+" 回復!");
-    update();
-  }},
-  {name:"🛡バリア", cost:20, action:function(){
-    if(playerMP<20){alert("MPが足りない"); return;}
-    playerMP-=20;
-    defense+=5;
-    log("🛡 バリア発動! 次の敵攻撃5ダメージ軽減!");
-    setTimeout(()=>{defense-=5;},5000);
-    update();
-  }}
+  {name:"🔥ファイア", cost:20, action:function(){if(playerMP<20)return;playerMP-=20;enemyHP-=attackPower*3;if(enemyHP<0)enemyHP=0;log("🔥 ファイアで "+attackPower*3+" ダメージ!");if(enemyHP==0){gold+=10+floor;exp+=5;dropItem();setTimeout(nextFloor,500);}update();}},
+  {name:"💧アイス", cost:15, action:function(){if(playerMP<15)return;playerMP-=15;enemyHP-=attackPower*1.5;if(enemyHP<0)enemyHP=0;log("💧 アイスで "+Math.floor(attackPower*1.5)+" ダメージ!");update();}},
+  {name:"⚡サンダー", cost:25, action:function(){if(playerMP<25)return;playerMP-=25;enemyHP-=attackPower*2;if(enemyHP<0)enemyHP=0;log("⚡ サンダーで "+Math.floor(attackPower*2)+" ダメージ!");if(enemyHP==0){gold+=10+floor;exp+=5;dropItem();setTimeout(nextFloor,500);}update();}},
+  {name:"💖ヒール", cost:15, action:function(){if(playerMP<15)return;playerMP-=15;let heal=30;playerHP+=heal;if(playerHP>playerMax)playerHP=playerMax;log("💖 ヒールで "+heal+" 回復!");update();}},
+  {name:"🛡バリア", cost:20, action:function(){if(playerMP<20)return;playerMP-=20;defense+=5;log("🛡 バリア発動! 次の敵攻撃5ダメージ軽減!");setTimeout(()=>{defense-=5;},5000);update();}}
 ];
 
 // スキルボタン描画
@@ -271,10 +238,10 @@ function update(){
 // セーブ
 function saveGame(){
   localStorage.setItem("towerSave",JSON.stringify({floor, level, gold, attackPower, playerMax, playerHP, playerMaxMP, playerMP, inventory, equipment}));
-  alert("ゲームをセーブしました！");
+  log("💾 ゲームをセーブしました！");
 }
 
-// 読み込み（古いセーブ補正）
+// 読み込み
 function loadGame(){
   let data=localStorage.getItem("towerSave");
   if(!data) return;
@@ -291,12 +258,34 @@ function loadGame(){
   equipment=d.equipment||{weapon:null,armor:null,ring:null};
 }
 
+// オート戦闘
+function autoBattle(){
+  if(!autoBattleOn || enemyHP<=0) return;
+  // MPが足りるスキルがあればランダムで使う
+  let usable = skills.filter(s=>playerMP>=s.cost);
+  if(usable.length>0){
+    usable[Math.floor(Math.random()*usable.length)].action();
+  } else {
+    attack();
+  }
+}
+
+// オートON/OFF切替
+document.getElementById("autoBtn").onclick = function(){
+  autoBattleOn = !autoBattleOn;
+  this.textContent = autoBattleOn ? "🟢オート戦闘ON" : "🔴オート戦闘OFF";
+  log("オート戦闘 " + (autoBattleOn?"ON":"OFF"));
+}
+
 // 初期化
 loadGame();
 spawnEnemy();
 drawSkills();
-document.getElementById("attackBtn").onclick=attack;
 update();
+document.getElementById("attackBtn").onclick = attack;
+
+// 1秒ごとに自動戦闘
+setInterval(autoBattle,1000);
 </script>
 </body>
 </html>
